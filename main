@@ -1,0 +1,274 @@
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math Challenge — РФМШ Edition</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 18px;
+  font-family: Arial, sans-serif;
+  color: white; text-align: center;
+  background: linear-gradient(135deg,#10152f,#263b70);
+}
+.card {
+  max-width: 600px; margin: 16px auto;
+  padding: 22px; border-radius: 20px;
+  background: #202b4b;
+  box-shadow: 0 8px 25px #0005;
+}
+h1 { color: #ffd166; }
+button, select {
+  padding: 13px; margin: 6px;
+  border: 0; border-radius: 10px;
+  font-size: 16px; cursor: pointer;
+}
+button {
+  color: white; background: #536dfe;
+}
+button:hover { filter: brightness(1.15); }
+.answer {
+  display: block; width: 100%;
+  background: #34466f; margin: 10px 0;
+}
+.good { background: #218c62 !important; }
+.bad { background: #b83a50 !important; }
+.stats {
+  display: flex; justify-content: space-around;
+  flex-wrap: wrap; gap: 8px;
+}
+.stats span { color: #ffd166; font-weight: bold; }
+.hidden { display: none; }
+.small { color: #c7d2f5; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>🧠 Math Challenge</h1>
+<p>РФМШ Edition • Тренируй математику!</p>
+
+<div class="card" id="menu">
+  <h2>Выбери класс</h2>
+  <select id="grade">
+    <option value="6">6 класс</option>
+    <option value="7" selected>7 класс</option>
+    <option value="8">8 класс</option>
+    <option value="9">9 класс</option>
+    <option value="10">10 класс</option>
+    <option value="11">11 класс</option>
+  </select>
+  <br>
+  <button onclick="startGame()">🚀 Начать игру</button>
+  <button onclick="openShop()">🛒 Магазин</button>
+  <p class="small">Правильно отвечай, получай монеты и покупай подсказки.</p>
+</div>
+
+<div class="card hidden" id="game">
+  <div class="stats">
+    <p>🪙 Монеты: <span id="coins">0</span></p>
+    <p>❤️ Жизни: <span id="lives">3</span></p>
+    <p>⭐ Очки: <span id="score">0</span></p>
+  </div>
+  <p id="level"></p>
+  <h2 id="task">Задание</h2>
+  <div id="answers"></div>
+  <p id="feedback"></p>
+  <button onclick="hint()">💡 Подсказка (5 монет)</button>
+  <button onclick="nextQuestion()">➡️ Пропустить</button>
+  <button onclick="backToMenu()">🏠 Меню</button>
+</div>
+
+<div class="card hidden" id="shop">
+  <h2>🛒 Магазин улучшений</h2>
+  <p>Твои монеты: <span id="shopCoins">0</span> 🪙</p>
+  <button onclick="buyLife()">❤️ Дополнительная жизнь — 15 монет</button>
+  <button onclick="buyHint()">💡 Подсказка — 5 монет</button>
+  <p id="shopMessage"></p>
+  <button onclick="backToMenu()">🏠 Назад</button>
+</div>
+
+<script>
+let coins = 0, lives = 3, score = 0;
+let current = null, locked = false, hintAvailable = false;
+let grade = 7, questionCount = 0;
+
+const questions = {
+6: [
+ ["Сколько будет 25% от 80?",["10","20","25","40"],1],
+ ["Реши: 3x = 21",["6","7","8","9"],1],
+ ["Чему равно 2⁴?",["8","12","16","24"],2],
+ ["Найди периметр квадрата со стороной 5",["10","15","20","25"],2],
+ ["Сколько градусов в прямом угле?",["45","90","180","360"],1]
+],
+7: [
+ ["Реши: 5x + 19 = 39",["2","4","5","8"],1],
+ ["Найди 20% от 490",["49","88","98","120"],2],
+ ["Если x + y = 6 и xy = 8, найди x² + y²",["20","28","36","16"],0],
+ ["Вычисли: 2³ + 3²",["13","15","17","18"],2],
+ ["Реши: 4x - 7 = 21",["5","6","7","8"],2],
+ ["Если x + y = 13 и xy = 42, найди x² + y²",["85","91","127","169"],0]
+],
+8: [
+ ["Реши: x² = 49. Положительный корень?",["6","7","8","14"],1],
+ ["Разложи: x² - 9",["(x-3)(x+3)","(x-9)²","x(x-9)","(x+3)²"],0],
+ ["Вычисли: 2⁵",["10","16","25","32"],3],
+ ["Упрости: 3a + 5a",["8","8a","15a","2a"],1]
+],
+9: [
+ ["Реши: 2x + 5 = 17",["5","6","7","8"],1],
+ ["Чему равен √144?",["10","11","12","14"],2],
+ ["Вычисли: (a²)³",["a⁵","a⁶","a⁸","3a²"],1]
+],
+10: [
+ ["Реши: x² - 25 = 0. Положительный корень?",["4","5","10","25"],1],
+ ["sin 30° равен",["0","1/2","√2/2","1"],1],
+ ["Вычисли: 3² × 3³",["3⁵","3⁶","9⁵","6⁵"],0]
+],
+11: [
+ ["Производная функции x² равна",["x","2x","x³","2"],1],
+ ["Вычисли: log₂ 8",["2","3","4","8"],1],
+ ["Сумма углов треугольника равна",["90°","180°","270°","360°"],1]
+]
+};
+
+function show(id) {
+  ["menu","game","shop"].forEach(x =>
+    document.getElementById(x).classList.toggle("hidden", x !== id)
+  );
+}
+
+function updateStats() {
+  document.getElementById("coins").textContent = coins;
+  document.getElementById("lives").textContent = lives;
+  document.getElementById("score").textContent = score;
+  document.getElementById("shopCoins").textContent = coins;
+}
+
+function startGame() {
+  grade = Number(document.getElementById("grade").value);
+  lives = 3; score = 0; questionCount = 0;
+  locked = false; hintAvailable = false;
+  show("game");
+  nextQuestion();
+}
+
+function nextQuestion() {
+  if (lives <= 0) {
+    document.getElementById("task").textContent = "Игра окончена!";
+    document.getElementById("answers").innerHTML =
+      "<p>Твой результат: " + score + " очков.</p>" +
+      "<button onclick='startGame()'>Играть снова</button>";
+    document.getElementById("feedback").textContent =
+      "Ты заработал " + coins + " монет!";
+    updateStats();
+    return;
+  }
+
+  const list = questions[grade];
+  current = list[Math.floor(Math.random() * list.length)];
+  locked = false;
+  hintAvailable = false;
+  questionCount++;
+
+  document.getElementById("level").textContent =
+    "Класс: " + grade + " • Задание №" + questionCount;
+  document.getElementById("task").textContent = current[0];
+  document.getElementById("feedback").textContent = "Выбери правильный ответ:";
+  const answers = document.getElementById("answers");
+  answers.innerHTML = "";
+
+  let options = current[1].map((text,index)=>({text,index}));
+  options.sort(()=>Math.random()-0.5);
+
+  options.forEach(option => {
+    const b = document.createElement("button");
+    b.className = "answer";
+    b.textContent = option.text;
+    b.onclick = () => checkAnswer(option.index,b);
+    answers.appendChild(b);
+  });
+  updateStats();
+}
+
+function checkAnswer(index, button) {
+  if (locked) return;
+  locked = true;
+
+  if (index === current[2]) {
+    button.classList.add("good");
+    score += 10; coins += 3;
+    document.getElementById("feedback").textContent =
+      "✅ Правильно! +10 очков и +3 монеты";
+  } else {
+    button.classList.add("bad");
+    lives--;
+    document.getElementById("feedback").textContent =
+      "❌ Неправильно! Потеряна одна жизнь.";
+    [...document.querySelectorAll(".answer")].forEach(b => {
+      if (b.textContent === current[1][current[2]]) b.classList.add("good");
+    });
+  }
+  updateStats();
+  setTimeout(nextQuestion, 1100);
+}
+
+function hint() {
+  if (locked) return;
+  if (coins < 5) {
+    document.getElementById("feedback").textContent =
+      "Не хватает монет! Правильные ответы дают монеты.";
+    return;
+  }
+  coins -= 5;
+  const buttons = [...document.querySelectorAll(".answer")];
+  const wrong = buttons.filter(b =>
+    b.textContent !== current[1][current[2]]
+  );
+  if (wrong.length) {
+    const remove = wrong[Math.floor(Math.random()*wrong.length)];
+    remove.disabled = true;
+    remove.style.opacity = "0.3";
+  }
+  document.getElementById("feedback").textContent =
+    "💡 Подсказка: один неправильный вариант убран.";
+  updateStats();
+}
+
+function openShop() {
+  updateStats();
+  show("shop");
+}
+
+function buyLife() {
+  if (coins >= 15) {
+    coins -= 15; lives++;
+    document.getElementById("shopMessage").textContent =
+      "❤️ Куплена дополнительная жизнь!";
+  } else {
+    document.getElementById("shopMessage").textContent =
+      "Не хватает монет!";
+  }
+  updateStats();
+}
+
+function buyHint() {
+  if (coins >= 5) {
+    coins -= 5;
+    document.getElementById("shopMessage").textContent =
+      "💡 Подсказка куплена! Вернись в игру, чтобы продолжить.";
+  } else {
+    document.getElementById("shopMessage").textContent =
+      "Не хватает монет!";
+  }
+  updateStats();
+}
+
+function backToMenu() {
+  show("menu");
+}
+</script>
+</body>
+</html>
+```
